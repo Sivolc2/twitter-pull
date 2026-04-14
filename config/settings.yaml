@@ -2,8 +2,20 @@
 # settings.local.yaml is gitignored
 
 # ─── API BACKEND ──────────────────────────────────────────────────────────────
-# Options: "twitterapi_io" | "twscrape"
+# Options: "twitterapi_io" | "getxapi" | "twscrape"
+#
+# Cost comparison for ~30k tweets/month:
+#   getxapi:       ~$1.50/mo  ($0.05/1k)  newest, least proven
+#   twitterapi_io: ~$4.50/mo  ($0.15/1k)  reliable pay-as-you-go
+#   socialdata:    ~$6.00/mo  ($0.20/1k)  per-item billing (no waste)
+#   twscrape:      free       (fragile)   breaks regularly, needs accounts
+#   official X:    ~$150/mo   ($5/1k)     TOS-compliant
+#
 fetcher: twitterapi_io
+
+getxapi:
+  api_key: "${GETXAPI_KEY}"         # get at https://getxapi.com ($0.10 free credit)
+  rate_limit_pause: 1.0
 
 twitterapi_io:
   api_key: "${TWITTERAPI_IO_KEY}"   # get at https://twitterapi.io

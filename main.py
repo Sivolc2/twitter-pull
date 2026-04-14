@@ -69,6 +69,13 @@ def build_fetcher(settings: dict):
             base_url=cfg["base_url"],
             rate_limit_pause=cfg.get("rate_limit_pause", 1.0),
         )
+    elif backend == "getxapi":
+        from src.fetchers.getxapi import GetXAPIFetcher
+        cfg = settings["getxapi"]
+        return GetXAPIFetcher(
+            api_key=cfg["api_key"],
+            rate_limit_pause=cfg.get("rate_limit_pause", 1.0),
+        )
     elif backend == "twscrape":
         from src.fetchers.twscrape_fetcher import TwscrapeFetcher
         cfg = settings["twscrape"]

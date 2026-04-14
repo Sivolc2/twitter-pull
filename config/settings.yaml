@@ -1,0 +1,29 @@
+# Runtime settings — copy to settings.local.yaml and fill in secrets
+# settings.local.yaml is gitignored
+
+# ─── API BACKEND ──────────────────────────────────────────────────────────────
+# Options: "twitterapi_io" | "twscrape"
+fetcher: twitterapi_io
+
+twitterapi_io:
+  api_key: "${TWITTERAPI_IO_KEY}"   # get at https://twitterapi.io
+  base_url: "https://api.twitterapi.io/twitter"
+  rate_limit_pause: 1.0             # seconds between requests
+
+twscrape:
+  accounts_db: "data/twscrape_accounts.db"
+  # Add accounts via: twscrape add_accounts accounts.txt
+
+# ─── SUMMARIZATION ────────────────────────────────────────────────────────────
+summarizer:
+  provider: anthropic             # "anthropic" | "openai" | "none"
+  model: claude-sonnet-4-6
+  api_key: "${ANTHROPIC_API_KEY}"
+  max_tokens: 2048
+  # How many tweets to batch per summarization call
+  batch_size: 50
+
+# ─── STORAGE ──────────────────────────────────────────────────────────────────
+storage:
+  seen_ids_db: "data/seen_ids.db"  # SQLite, tracks processed tweet IDs
+  dedup_window_days: 7             # ignore tweets seen in last N days

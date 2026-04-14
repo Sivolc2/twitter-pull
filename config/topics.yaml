@@ -1,0 +1,57 @@
+# twitter-pull configuration
+# Edit this file to customize what gets pulled
+
+# ─── KEYWORD SEARCHES ─────────────────────────────────────────────────────────
+topics:
+  news:
+    label: "News"
+    queries:
+      - "breaking news lang:en -is:retweet"
+      - "world news today lang:en -is:retweet"
+    max_results: 50
+    schedule: "0 7,19 * * *"   # twice daily
+
+  ai_updates:
+    label: "AI Updates"
+    queries:
+      - "(AI OR LLM OR \"large language model\") (launch OR release OR \"new model\") lang:en -is:retweet"
+      - "(GPT OR Claude OR Gemini OR Llama OR Mistral) (update OR release OR benchmark) lang:en -is:retweet"
+      - "(AI agent OR autonomous AI OR agentic) (product OR build OR ship) lang:en -is:retweet"
+      - "\"AI startup\" OR \"YC AI\" funding lang:en -is:retweet min_faves:50"
+    max_results: 100
+    schedule: "0 8 * * *"      # daily at 8am
+
+  ai_building:
+    label: "Building with AI"
+    queries:
+      - "(\"vibe coding\" OR \"cursor\" OR \"claude code\" OR windsurf) tips lang:en -is:retweet min_faves:20"
+      - "(RAG OR \"function calling\" OR \"tool use\" OR \"MCP\") tutorial lang:en -is:retweet min_faves:30"
+      - "built with AI shipped product lang:en -is:retweet min_faves:50"
+    max_results: 75
+    schedule: "0 8 * * *"
+
+# ─── ACCOUNTS TO FOLLOW ───────────────────────────────────────────────────────
+accounts:
+  # Add Twitter/X usernames here (without @)
+  # These pull recent tweets from their timeline
+  key_people:
+    - username: sama             # Sam Altman
+    - username: karpathy         # Andrej Karpathy
+    - username: ylecun           # Yann LeCun
+    - username: elonmusk         # Elon Musk
+    - username: paulg            # Paul Graham
+    - username: balajis          # Balaji Srinivasan
+    - username: benedictevans    # Benedict Evans
+    - username: swyx             # swyx (AI engineer)
+    - username: goodside         # Riley Goodside (prompting)
+    - username: emollick         # Ethan Mollick (Wharton AI)
+  max_results_per_account: 20
+  schedule: "0 8 * * *"         # daily at 8am
+
+# ─── OUTPUT ───────────────────────────────────────────────────────────────────
+output:
+  digest_dir: "digests"         # relative to project root
+  # Optional: copy digests to your Obsidian vault
+  # obsidian_dir: "~/Documents/Argos/Twitter Digests"
+  format: markdown              # markdown only for now
+  keep_days: 30                 # delete digests older than this

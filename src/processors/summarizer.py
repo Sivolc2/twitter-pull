@@ -2,6 +2,7 @@
 Claude-powered summarization of tweet batches into human-readable digests.
 Falls back to a simple text join if no API key is set.
 """
+from __future__ import annotations
 import logging
 import textwrap
 from dataclasses import dataclass

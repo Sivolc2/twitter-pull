@@ -3,6 +3,7 @@ GetXAPI fetcher — $0.05 per 1,000 tweets (~3× cheaper than TwitterAPI.io).
 Sign up at https://getxapi.com — free $0.10 credit on signup (~2,000 tweets).
 Docs: https://getxapi.com/docs
 """
+from __future__ import annotations
 import time
 import logging
 from datetime import datetime, timezone

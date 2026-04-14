@@ -2,6 +2,7 @@
 TwitterAPI.io fetcher — $0.15 per 1,000 tweets.
 Docs: https://twitterapi.io/docs
 """
+from __future__ import annotations
 import time
 import logging
 from datetime import datetime, timezone

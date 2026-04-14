@@ -11,3 +11,4 @@ logs/
 *.db-wal
 *.db-shm
 .DS_Store
+config/feed.local.yaml

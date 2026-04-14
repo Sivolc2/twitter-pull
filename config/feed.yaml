@@ -1,0 +1,61 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# YOUR PERSONAL FEED
+# Edit this file to control what twitter-pull collects and summarizes.
+# Run `python main.py --dry-run` to test changes before the next scheduled run.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ─── ACCOUNTS ─────────────────────────────────────────────────────────────────
+# Twitter/X usernames to follow (without @).
+# Their recent tweets are pulled daily and summarized as a group.
+
+accounts:
+  - sama             # Sam Altman
+  - karpathy         # Andrej Karpathy
+  - ylecun           # Yann LeCun
+  - elonmusk         # Elon Musk
+  - paulg            # Paul Graham
+  - balajis          # Balaji Srinivasan
+  - benedictevans    # Benedict Evans
+  - swyx             # swyx (AI engineering)
+  - goodside         # Riley Goodside (prompting)
+  - emollick         # Ethan Mollick (Wharton AI)
+
+
+# ─── TOPIC PRESETS ────────────────────────────────────────────────────────────
+# Choose from: ai_news, ai_building, startups, tech_news, crypto, news, science, geopolitics
+# Queries for each preset live in config/presets.yaml — edit there to tune.
+
+presets:
+  - ai_news
+  - ai_building
+  - startups
+
+
+# ─── CUSTOM TOPICS ────────────────────────────────────────────────────────────
+# Add your own topics with plain keywords. No query syntax needed —
+# the system builds the search for you.
+# 'require' = all must appear, 'any' = at least one must appear, 'exclude' = none must appear.
+
+custom_topics: []
+# Example:
+# custom_topics:
+#   - name: "Robotics"
+#     any: ["robotics", "humanoid robot", "Boston Dynamics", "Figure AI"]
+#     min_likes: 20
+#     max_results: 40
+#
+#   - name: "Climate Tech"
+#     any: ["climate tech", "cleantech", "carbon capture", "fusion energy"]
+#     min_likes: 20
+#     max_results: 40
+
+
+# ─── OUTPUT ───────────────────────────────────────────────────────────────────
+
+output:
+  digest_dir: "digests"       # where to write markdown files
+  keep_days: 30               # delete digests older than this
+
+  # Sync digests to your Obsidian vault (optional)
+  # obsidian_dir: "~/Documents/Argos/Twitter Digests"

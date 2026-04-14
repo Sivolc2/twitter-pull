@@ -1,0 +1,67 @@
+# Topic presets — query packs for common interests.
+# Users reference these by name in feed.yaml. Edit queries here to tune results.
+# Each preset runs as separate searches and gets its own digest section.
+
+presets:
+  ai_news:
+    label: "AI News"
+    description: "Model releases, research papers, industry moves"
+    queries:
+      - "(AI OR LLM OR \"large language model\") (launch OR release OR \"new model\") lang:en -is:retweet min_faves:20"
+      - "(GPT OR Claude OR Gemini OR Llama OR Mistral OR Grok) (update OR release OR benchmark) lang:en -is:retweet min_faves:20"
+    max_results: 80
+
+  ai_building:
+    label: "Building with AI"
+    description: "Tools, techniques, and tips for building AI products"
+    queries:
+      - "(cursor OR \"claude code\" OR windsurf OR copilot) (tip OR trick OR tutorial OR workflow) lang:en -is:retweet min_faves:20"
+      - "(RAG OR \"function calling\" OR \"tool use\" OR MCP OR \"AI agent\") (build OR tutorial OR guide) lang:en -is:retweet min_faves:30"
+      - "built shipped \"with AI\" lang:en -is:retweet min_faves:50"
+    max_results: 80
+
+  startups:
+    label: "Startups & Venture"
+    description: "Funding rounds, YC, founder insights, market moves"
+    queries:
+      - "(\"AI startup\" OR \"YC\" OR \"Series A\" OR \"seed round\") (funding OR raised OR launched) lang:en -is:retweet min_faves:30"
+      - "(founder OR \"product-market fit\" OR \"go to market\") insight lang:en -is:retweet min_faves:50"
+    max_results: 60
+
+  tech_news:
+    label: "Tech News"
+    description: "Big tech, developer tools, open source, platforms"
+    queries:
+      - "(Apple OR Google OR Microsoft OR Meta OR Amazon) (launch OR release OR announces) lang:en -is:retweet min_faves:100"
+      - "(open source OR developer) (tool OR framework OR release) lang:en -is:retweet min_faves:50"
+    max_results: 60
+
+  crypto:
+    label: "Crypto & Web3"
+    description: "DeFi, protocols, market moves, regulation"
+    queries:
+      - "(Bitcoin OR Ethereum OR crypto OR DeFi) (regulation OR launch OR protocol) lang:en -is:retweet min_faves:50"
+    max_results: 50
+
+  news:
+    label: "World News"
+    description: "Breaking news and major world events"
+    queries:
+      - "breaking news lang:en -is:retweet min_faves:100"
+      - "\"world news\" today lang:en -is:retweet min_faves:50"
+    max_results: 50
+
+  science:
+    label: "Science & Research"
+    description: "Papers, breakthroughs, climate, biotech"
+    queries:
+      - "(research OR study OR paper) (breakthrough OR discovery OR published) lang:en -is:retweet min_faves:50"
+      - "(climate OR biotech OR longevity OR physics) breakthrough lang:en -is:retweet min_faves:30"
+    max_results: 50
+
+  geopolitics:
+    label: "Geopolitics"
+    description: "International relations, policy, economic shifts"
+    queries:
+      - "(geopolitics OR policy OR diplomacy OR sanctions) lang:en -is:retweet min_faves:100"
+    max_results: 50

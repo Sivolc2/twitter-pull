@@ -3,11 +3,13 @@
 twitter-pull — periodic Twitter/X digest generator
 
 Usage:
-  python main.py                        # run all topics
-  python main.py --topics ai_updates    # run specific topics
-  python main.py --accounts-only        # only pull account timelines
-  python main.py --dry-run              # fetch but don't write output
+  python main.py                          # run everything in feed.yaml
+  python main.py --presets ai_news        # run specific presets only
+  python main.py --accounts-only          # only pull account timelines
+  python main.py --topics-only            # only run topic searches
+  python main.py --dry-run                # fetch and summarize, skip writing file
 """
+from __future__ import annotations
 import argparse
 import logging
 import os
@@ -24,75 +26,102 @@ logging.basicConfig(
 )
 log = logging.getLogger("twitter-pull")
 
+ROOT = Path(__file__).parent
+
+
+def load_env() -> None:
+    """Load .env file if present (falls back to environment variables)."""
+    env_path = ROOT / ".env"
+    if not env_path.exists():
+        return
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_path)
+    except ImportError:
+        # manual parse if python-dotenv not installed
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                os.environ.setdefault(k.strip(), v.strip())
+
 
 def load_config():
-    cfg_dir = Path(__file__).parent / "config"
+    load_env()
 
-    with open(cfg_dir / "settings.yaml") as f:
-        settings_raw = f.read()
-    # expand env vars in settings
-    for key, val in os.environ.items():
-        settings_raw = settings_raw.replace(f"${{{key}}}", val)
-    settings = yaml.safe_load(settings_raw)
+    with open(ROOT / "config" / "settings.yaml") as f:
+        settings = yaml.safe_load(f)
 
-    with open(cfg_dir / "topics.yaml") as f:
-        topics = yaml.safe_load(f)
+    with open(ROOT / "config" / "feed.yaml") as f:
+        feed = yaml.safe_load(f)
 
-    # allow local overrides (gitignored)
-    local_path = cfg_dir / "settings.local.yaml"
-    if local_path.exists():
-        with open(local_path) as f:
-            local_raw = f.read()
-        for key, val in os.environ.items():
-            local_raw = local_raw.replace(f"${{{key}}}", val)
-        local = yaml.safe_load(local_raw)
-        _deep_merge(settings, local)
+    with open(ROOT / "config" / "presets.yaml") as f:
+        presets_cfg = yaml.safe_load(f)
 
-    return settings, topics
+    # inject API keys from environment
+    backend = settings.get("fetcher", "getxapi")
+    if backend == "getxapi":
+        settings.setdefault("getxapi", {})["api_key"] = os.environ.get("GETXAPI_KEY", "")
+    elif backend == "twitterapi_io":
+        settings.setdefault("twitterapi_io", {})["api_key"] = os.environ.get("TWITTERAPI_IO_KEY", "")
 
+    settings["summarizer"]["api_key"] = os.environ.get("ANTHROPIC_API_KEY", "") or \
+                                         os.environ.get("OPENAI_API_KEY", "")
 
-def _deep_merge(base: dict, override: dict) -> None:
-    for k, v in override.items():
-        if k in base and isinstance(base[k], dict) and isinstance(v, dict):
-            _deep_merge(base[k], v)
-        else:
-            base[k] = v
+    return settings, feed, presets_cfg
 
 
 def build_fetcher(settings: dict):
-    backend = settings.get("fetcher", "twitterapi_io")
-    if backend == "twitterapi_io":
-        from src.fetchers.twitterapi_io import TwitterAPIioFetcher
-        cfg = settings["twitterapi_io"]
-        return TwitterAPIioFetcher(
-            api_key=cfg["api_key"],
-            base_url=cfg["base_url"],
-            rate_limit_pause=cfg.get("rate_limit_pause", 1.0),
-        )
-    elif backend == "getxapi":
+    backend = settings.get("fetcher", "getxapi")
+    if backend == "getxapi":
         from src.fetchers.getxapi import GetXAPIFetcher
         cfg = settings["getxapi"]
-        return GetXAPIFetcher(
-            api_key=cfg["api_key"],
-            rate_limit_pause=cfg.get("rate_limit_pause", 1.0),
-        )
+        if not cfg.get("api_key"):
+            sys.exit("ERROR: GETXAPI_KEY not set. Add it to .env or set the environment variable.")
+        return GetXAPIFetcher(api_key=cfg["api_key"], rate_limit_pause=cfg.get("rate_limit_pause", 1.0))
+    elif backend == "twitterapi_io":
+        from src.fetchers.twitterapi_io import TwitterAPIioFetcher
+        cfg = settings["twitterapi_io"]
+        if not cfg.get("api_key"):
+            sys.exit("ERROR: TWITTERAPI_IO_KEY not set. Add it to .env or set the environment variable.")
+        return TwitterAPIioFetcher(api_key=cfg["api_key"], base_url=cfg["base_url"],
+                                   rate_limit_pause=cfg.get("rate_limit_pause", 1.0))
     elif backend == "twscrape":
         from src.fetchers.twscrape_fetcher import TwscrapeFetcher
-        cfg = settings["twscrape"]
-        return TwscrapeFetcher(accounts_db=cfg["accounts_db"])
+        return TwscrapeFetcher(accounts_db=settings["twscrape"]["accounts_db"])
     else:
-        raise ValueError(f"Unknown fetcher backend: {backend}")
+        sys.exit(f"ERROR: Unknown fetcher backend '{backend}'. Check config/settings.yaml.")
+
+
+def custom_topic_to_query(topic: dict) -> str:
+    """Convert a plain-English custom topic dict into a Twitter search query."""
+    parts = []
+    any_terms = topic.get("any", [])
+    require_terms = topic.get("require", [])
+    exclude_terms = topic.get("exclude", [])
+
+    if any_terms:
+        quoted = [f'"{t}"' if " " in t else t for t in any_terms]
+        parts.append(f"({' OR '.join(quoted)})")
+    for t in require_terms:
+        parts.append(f'"{t}"' if " " in t else t)
+    for t in exclude_terms:
+        parts.append(f'-"{t}"' if " " in t else f"-{t}")
+
+    min_likes = topic.get("min_likes", 10)
+    parts.append(f"lang:en -is:retweet min_faves:{min_likes}")
+    return " ".join(parts)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Twitter/X digest generator")
-    parser.add_argument("--topics", nargs="*", help="specific topic keys to run (default: all)")
-    parser.add_argument("--accounts-only", action="store_true", help="only pull account timelines")
-    parser.add_argument("--topics-only", action="store_true", help="only run keyword topics")
-    parser.add_argument("--dry-run", action="store_true", help="fetch but skip writing output")
+    parser.add_argument("--presets", nargs="*", help="run only these preset names")
+    parser.add_argument("--accounts-only", action="store_true")
+    parser.add_argument("--topics-only", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="print output, don't write file")
     args = parser.parse_args()
 
-    settings, topics_cfg = load_config()
+    settings, feed, presets_cfg = load_config()
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     from src.processors.dedup import Deduplicator
@@ -114,59 +143,70 @@ def main():
     fetcher = build_fetcher(settings)
     results = []
 
-    # ── keyword topic searches ──────────────────────────────────────────────
+    # ── topic searches ──────────────────────────────────────────────────────
     if not args.accounts_only:
-        topic_filter = set(args.topics) if args.topics else None
-        for topic_key, topic_cfg in topics_cfg.get("topics", {}).items():
-            if topic_filter and topic_key not in topic_filter:
-                continue
-            label = topic_cfg["label"]
-            log.info("fetching topic: %s", label)
-            all_tweets = []
-            for query in topic_cfg["queries"]:
-                tweets = fetcher.search(query, max_results=topic_cfg.get("max_results", 50))
-                log.info("  query '%s': %d tweets", query[:60], len(tweets))
-                all_tweets.extend(tweets)
+        preset_filter = set(args.presets) if args.presets else None
+        all_presets = presets_cfg.get("presets", {})
 
-            new_tweets = dedup.filter_new(all_tweets)
-            log.info("topic %s: %d new tweets after dedup", label, len(new_tweets))
-            result = summarizer.summarize(new_tweets, label, date_str)
-            results.append(result)
+        # built-in presets from feed.yaml
+        for preset_name in feed.get("presets", []):
+            if preset_filter and preset_name not in preset_filter:
+                continue
+            if preset_name not in all_presets:
+                log.warning("unknown preset '%s' — check config/presets.yaml", preset_name)
+                continue
+            preset = all_presets[preset_name]
+            label = preset["label"]
+            log.info("fetching preset: %s", label)
+            all_tweets = []
+            for query in preset["queries"]:
+                tweets = fetcher.search(query, max_results=preset.get("max_results", 60))
+                log.info("  '%s': %d tweets", query[:70], len(tweets))
+                all_tweets.extend(tweets)
+            new = dedup.filter_new(all_tweets)
+            log.info("%s: %d new tweets", label, len(new))
+            results.append(summarizer.summarize(new, label, date_str))
+
+        # custom topics from feed.yaml
+        for topic in feed.get("custom_topics", []):
+            name = topic.get("name", "Custom")
+            if preset_filter and name not in preset_filter:
+                continue
+            query = custom_topic_to_query(topic)
+            log.info("fetching custom topic: %s", name)
+            tweets = fetcher.search(query, max_results=topic.get("max_results", 50))
+            log.info("  %d tweets", len(tweets))
+            new = dedup.filter_new(tweets)
+            results.append(summarizer.summarize(new, name, date_str))
 
     # ── account timelines ───────────────────────────────────────────────────
     if not args.topics_only:
-        accounts_cfg = topics_cfg.get("accounts", {})
-        key_people = accounts_cfg.get("key_people", [])
-        max_per = accounts_cfg.get("max_results_per_account", 20)
-
-        if key_people:
-            log.info("fetching %d account timelines", len(key_people))
-            all_account_tweets = []
-            for entry in key_people:
-                username = entry["username"]
+        accounts = feed.get("accounts", [])
+        max_per = settings.get("accounts", {}).get("max_results_per_account", 20)
+        if accounts:
+            log.info("fetching %d account timelines", len(accounts))
+            all_tweets = []
+            for username in accounts:
                 tweets = fetcher.timeline(username, max_results=max_per)
                 log.info("  @%s: %d tweets", username, len(tweets))
-                all_account_tweets.extend(tweets)
-
-            new_account_tweets = dedup.filter_new(all_account_tweets)
-            log.info("accounts: %d new tweets after dedup", len(new_account_tweets))
-            result = summarizer.summarize(new_account_tweets, "Key People", date_str)
-            results.append(result)
+                all_tweets.extend(tweets)
+            new = dedup.filter_new(all_tweets)
+            log.info("accounts: %d new tweets", len(new))
+            results.append(summarizer.summarize(new, "Key People", date_str))
 
     fetcher.close()
     dedup.close()
 
     if not results:
-        log.info("no results to write")
+        log.info("nothing to write")
         return
 
     if args.dry_run:
-        log.info("dry-run: skipping output write")
         for r in results:
             print(f"\n{'='*60}\n{r.topic_label} ({r.tweet_count} tweets)\n{r.summary}")
         return
 
-    output_cfg = topics_cfg.get("output", {})
+    output_cfg = feed.get("output", {})
     digest_path = write_digest(
         results=results,
         digest_dir=output_cfg.get("digest_dir", "digests"),
@@ -174,7 +214,7 @@ def main():
         obsidian_dir=output_cfg.get("obsidian_dir"),
         keep_days=output_cfg.get("keep_days", 30),
     )
-    log.info("done — digest at %s", digest_path)
+    log.info("done — %s", digest_path)
 
 
 if __name__ == "__main__":

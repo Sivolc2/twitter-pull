@@ -1,7 +1,11 @@
 """
 GetXAPI fetcher — $0.05 per 1,000 tweets (~3× cheaper than TwitterAPI.io).
 Sign up at https://getxapi.com — free $0.10 credit on signup (~2,000 tweets).
-Docs: https://getxapi.com/docs
+Docs: https://docs.getxapi.com
+
+Endpoints:
+  Search:   GET /twitter/tweet/advanced_search?q=...&product=Latest
+  Timeline: GET /twitter/user/tweets?userName=...
 """
 from __future__ import annotations
 import time
@@ -14,33 +18,32 @@ from .base import BaseFetcher, Tweet
 
 log = logging.getLogger(__name__)
 
-BASE_URL = "https://api.getxapi.com/v2"
+BASE_URL = "https://api.getxapi.com"
 
 
 def _parse_tweet(raw: dict, topic: str | None = None, source_account: str | None = None) -> Tweet:
-    author = raw.get("user", raw.get("author", {}))
-    created_raw = raw.get("created_at", raw.get("createdAt", ""))
+    author = raw.get("author", {})
+    created_raw = raw.get("createdAt", "")
     try:
-        created_at = datetime.strptime(created_raw, "%a %b %d %H:%M:%S +0000 %Y").replace(tzinfo=timezone.utc)
+        created_at = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
-        try:
-            created_at = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
-            created_at = datetime.now(timezone.utc)
+        created_at = datetime.now(timezone.utc)
 
-    tweet_id = str(raw.get("id_str", raw.get("id", "")))
-    username = author.get("screen_name", author.get("userName", "unknown"))
+    tweet_id = str(raw.get("id", ""))
+    username = author.get("userName", "unknown")
+    url = raw.get("twitterUrl", raw.get("url", f"https://x.com/{username}/status/{tweet_id}"))
+
     return Tweet(
         id=tweet_id,
-        text=raw.get("full_text", raw.get("text", "")),
+        text=raw.get("text", ""),
         author_username=username,
         author_name=author.get("name", username),
         created_at=created_at,
-        like_count=raw.get("favorite_count", raw.get("likeCount", 0)),
-        retweet_count=raw.get("retweet_count", raw.get("retweetCount", 0)),
-        reply_count=raw.get("reply_count", raw.get("replyCount", 0)),
-        url=f"https://x.com/{username}/status/{tweet_id}",
-        is_retweet="retweeted_status" in raw or raw.get("isRetweet", False),
+        like_count=raw.get("likeCount", 0),
+        retweet_count=raw.get("retweetCount", 0),
+        reply_count=raw.get("replyCount", 0),
+        url=url,
+        is_retweet=raw.get("type") == "retweet",
         topic=topic,
         source_account=source_account,
     )
@@ -57,61 +60,61 @@ class GetXAPIFetcher(BaseFetcher):
         cursor = None
         while len(tweets) < max_results:
             params: dict = {
-                "query": query,
-                "count": min(max_results - len(tweets), 20),
-                "result_type": "recent",
+                "q": query,
+                "product": "Latest",
             }
             if cursor:
                 params["cursor"] = cursor
 
             try:
-                resp = self._client.get(f"{BASE_URL}/search/tweets", params=params)
+                resp = self._client.get(f"{BASE_URL}/twitter/tweet/advanced_search", params=params)
                 resp.raise_for_status()
                 data = resp.json()
             except httpx.HTTPStatusError as e:
-                log.error("GetXAPI search error %s: %s", e.response.status_code, e.response.text)
+                log.error("GetXAPI search error %s: %s", e.response.status_code, e.response.text[:200])
                 break
             except Exception as e:
                 log.error("GetXAPI search error: %s", e)
                 break
 
-            statuses = data.get("statuses", data.get("tweets", []))
-            for raw in statuses:
+            for raw in data.get("tweets", []):
                 tweets.append(_parse_tweet(raw, topic=query))
 
-            cursor = data.get("next_cursor") or data.get("search_metadata", {}).get("next_results")
-            if not cursor or not statuses:
+            if not data.get("has_more") or not data.get("next_cursor"):
                 break
+            cursor = data["next_cursor"]
             time.sleep(self.pause)
 
         return tweets[:max_results]
 
     def timeline(self, username: str, max_results: int = 20) -> list[Tweet]:
         tweets: list[Tweet] = []
-        params: dict = {
-            "screen_name": username,
-            "count": min(max_results, 200),
-            "tweet_mode": "extended",
-            "exclude_replies": False,
-            "include_rts": False,
-        }
+        cursor = None
+        while len(tweets) < max_results:
+            params: dict = {"userName": username}
+            if cursor:
+                params["cursor"] = cursor
 
-        try:
-            resp = self._client.get(f"{BASE_URL}/statuses/user_timeline", params=params)
-            resp.raise_for_status()
-            data = resp.json()
-        except httpx.HTTPStatusError as e:
-            log.error("GetXAPI timeline error %s for @%s: %s", e.response.status_code, username, e.response.text)
-            return []
-        except Exception as e:
-            log.error("GetXAPI timeline error for @%s: %s", username, e)
-            return []
+            try:
+                resp = self._client.get(f"{BASE_URL}/twitter/user/tweets", params=params)
+                resp.raise_for_status()
+                data = resp.json()
+            except httpx.HTTPStatusError as e:
+                log.error("GetXAPI timeline error %s for @%s: %s", e.response.status_code, username, e.response.text[:200])
+                break
+            except Exception as e:
+                log.error("GetXAPI timeline error for @%s: %s", username, e)
+                break
 
-        raw_list = data if isinstance(data, list) else data.get("tweets", [])
-        for raw in raw_list[:max_results]:
-            tweets.append(_parse_tweet(raw, source_account=username))
+            for raw in data.get("tweets", []):
+                tweets.append(_parse_tweet(raw, source_account=username))
 
-        return tweets
+            if not data.get("has_more") or not data.get("next_cursor") or len(tweets) >= max_results:
+                break
+            cursor = data["next_cursor"]
+            time.sleep(self.pause)
+
+        return tweets[:max_results]
 
     def close(self) -> None:
         self._client.close()

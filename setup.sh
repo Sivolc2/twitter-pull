@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# Install dependencies. Run onboard.py afterwards for interactive setup.
+# Install uv (if needed) and sync dependencies.
+# Then run: uv run python onboard.py
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [ ! -d .venv ]; then
-  python3 -m venv .venv
+if ! command -v uv &>/dev/null; then
+  echo "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
 fi
 
-source .venv/bin/activate
-pip install --quiet --upgrade pip
-pip install --quiet -r requirements.txt
+echo "Syncing dependencies..."
+uv sync
 
 mkdir -p data digests logs
 
 echo ""
-echo "Dependencies installed. Run the setup wizard:"
-echo "  source .venv/bin/activate && python onboard.py"
+echo "Ready. Run the setup wizard:"
+echo "  uv run python onboard.py"

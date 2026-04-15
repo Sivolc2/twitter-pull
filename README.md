@@ -21,11 +21,13 @@ A personal Twitter/X digest generator. Pulls tweets on topics you care about, su
 ## Quickstart
 
 ```bash
+# Install uv (fast Python package manager) — skip if you have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 git clone https://github.com/Sivolc2/twitter-pull
 cd twitter-pull
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python onboard.py
+bash setup.sh          # installs deps via uv
+uv run python onboard.py
 ```
 
 `onboard.py` walks you through everything interactively:
@@ -75,20 +77,20 @@ custom_topics:
 
 After editing `feed.yaml`, test with:
 ```bash
-python main.py --dry-run
+uv run python main.py --dry-run
 ```
 
 ## Running manually
 
 ```bash
-source .venv/bin/activate
-
-python main.py                        # run everything, write digest
-python main.py --dry-run              # preview without writing
-python main.py --presets ai_news      # one preset only
-python main.py --accounts-only        # only account timelines
-python main.py --topics-only          # only keyword searches
+uv run python main.py                        # run everything, write digest
+uv run python main.py --dry-run              # preview without writing
+uv run python main.py --presets ai_news      # one preset only
+uv run python main.py --accounts-only        # only account timelines
+uv run python main.py --topics-only          # only keyword searches
 ```
+
+No venv activation needed — `uv run` handles it automatically and keeps deps in sync.
 
 Digests are written to `digests/YYYY-MM-DD-twitter-digest.md`.
 
@@ -123,4 +125,11 @@ In `config/settings.yaml`, change `fetcher:` and set the corresponding key in `.
 
 ```bash
 tail -f logs/cron.log    # watch live
+```
+
+## Adding dependencies
+
+```bash
+uv add some-package       # adds to pyproject.toml and updates uv.lock
+uv add --optional twscrape twscrape  # optional extras
 ```

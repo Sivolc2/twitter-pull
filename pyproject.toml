@@ -1,0 +1,22 @@
+[project]
+name = "twitter-pull"
+version = "0.1.0"
+description = "Periodic Twitter/X digest generator with AI summarization"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "anthropic>=0.40",
+]
+
+[project.optional-dependencies]
+twscrape = ["twscrape>=0.14"]
+openai   = ["openai>=1.0"]
+
+[project.scripts]
+twitter-pull = "main:main"
+
+[dependency-groups]
+dev = []

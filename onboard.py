@@ -130,7 +130,7 @@ output:
 def run_test() -> bool:
     print("\n  Running a quick test (1 preset, 10 tweets)…")
     result = subprocess.run(
-        [sys.executable, "main.py", "--dry-run", "--presets", "ai_news", "--topics-only"],
+        ["uv", "run", "python", "main.py", "--dry-run", "--presets", "ai_news", "--topics-only"],
         capture_output=True, text=True, cwd=ROOT
     )
     if result.returncode == 0:
@@ -145,11 +145,11 @@ def run_test() -> bool:
 
 
 def install_cron(hour_utc_1: int, hour_utc_2: int) -> None:
-    python = str(ROOT / ".venv" / "bin" / "python")
     log = str(ROOT / "logs" / "cron.log")
     (ROOT / "logs").mkdir(exist_ok=True)
 
-    def cron_line(h): return f"0 {h} * * * cd {ROOT} && {python} main.py >> {log} 2>&1"
+    # Use `uv run` so no venv activation needed and deps are always in sync
+    def cron_line(h): return f"0 {h} * * * cd {ROOT} && uv run python main.py >> {log} 2>&1"
 
     import subprocess
     existing = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout

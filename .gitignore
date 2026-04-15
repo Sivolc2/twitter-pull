@@ -13,3 +13,4 @@ logs/
 *.db-shm
 .DS_Store
 config/feed.local.yaml
+.env.telegram

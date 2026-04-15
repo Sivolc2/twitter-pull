@@ -1,8 +1,46 @@
 # Topic presets — query packs for common interests.
 # Users reference these by name in feed.yaml. Edit queries here to tune results.
 # Each preset runs as separate searches and gets its own digest section.
+# DAILY CAP: ~100 posts total across all presets
 
 presets:
+  # ─── NEW FOCUSED PRESETS ───────────────────────────────────────────────────
+
+  ai_engineering:
+    label: "AI Engineering"
+    description: "LLMs, coding assistants, AI development"
+    queries:
+      - "(\"Claude Code\" OR \"Cursor\" OR \"Codex\" OR \"GitHub Copilot\" OR \"Windsurf\") lang:en -is:retweet min_faves:20"
+      - "(LLM OR \"language model\") (engineering OR architecture OR training OR inference) lang:en -is:retweet min_faves:30"
+      - "(RAG OR \"function calling\" OR \"tool use\" OR MCP OR prompt) (engineering OR pattern) lang:en -is:retweet min_faves:25"
+    max_results: 20  # ~20 posts
+
+  design_eng:
+    label: "Design Engineering"
+    description: "UI/UX, design systems, component libraries"
+    queries:
+      - "(shadcn OR \"design system\" OR \"component library\" OR Tailwind) lang:en -is:retweet min_faves:30"
+      - "(\"design engineering\" OR \"design engineer\" OR \"interface design\") lang:en -is:retweet min_faves:20"
+    max_results: 15  # ~15 posts
+
+  dev_tools:
+    label: "Developer Tools"
+    description: "Platforms, databases, frameworks, tooling"
+    queries:
+      - "(Vercel OR Cloudflare OR \"edge functions\" OR serverless) (launch OR release OR feature) lang:en -is:retweet min_faves:30"
+      - "(Bun OR Deno OR Node.js OR Vite OR Next.js) (update OR release OR performance) lang:en -is:retweet min_faves:25"
+      - "(Convex OR Turso OR PlanetScale OR Supabase OR Neon) database lang:en -is:retweet min_faves:20"
+    max_results: 20  # ~20 posts
+
+  startups:
+    label: "Startups & Product"
+    description: "Founders, product velocity, venture, market moves"
+    queries:
+      - "(\"product velocity\" OR \"ship faster\" OR \"0 to 1\" OR PMF) lang:en -is:retweet min_faves:40"
+      - "(YC OR \"Y Combinator\" OR \"seed round\" OR \"Series A\") (launch OR raised OR funded) lang:en -is:retweet min_faves:30"
+    max_results: 20  # ~20 posts
+
+  # ─── ORIGINAL PRESETS (kept for reference) ────────────────────────────────
   ai_news:
     label: "AI News"
     description: "Model releases, research papers, industry moves"

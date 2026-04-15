@@ -37,4 +37,4 @@ storage:
 
 # ─── ACCOUNTS ─────────────────────────────────────────────────────────────────
 accounts:
-  max_results_per_account: 20
+  max_results_per_account: 5  # 5 accounts × 5 tweets = 25 total
